@@ -1,13 +1,15 @@
 package com.demo.kafka.service;
 
-import com.demo.kafka.entity.Database;
-import com.demo.kafka.entity.Mapping;
-import com.demo.kafka.repository.DatabaseRepository;
-import com.demo.kafka.repository.MappingsRepository;
+import com.demo.kafka.config.DatabaseConnectionUtil;
+import com.demo.kafka.feature.database.Database;
+import com.demo.kafka.feature.mapping.Mapping;
+import com.demo.kafka.feature.tables.Tables;
+import com.demo.kafka.feature.database.DatabaseRepository;
+import com.demo.kafka.feature.mapping.MappingRepository;
+import com.demo.kafka.feature.tables.TablesRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -22,20 +24,20 @@ import java.util.Map;
 @Service
 public class DynamicKafkaConsumer {
 
-    private final MappingsRepository mappingsRepository;
-    private final DatabaseRepository databasesRepository;
-    private final EntityManagerFactory entityManagerFactory;
+    private final MappingRepository mappingsRepository;
+    private final TablesRepository tableRepository;
+    private final DatabaseRepository databaseRepository;
     private final ConcurrentKafkaListenerContainerFactory<String, String> containerFactory;
     private final ObjectMapper objectMapper;
     private final Map<String, MessageListenerContainer> activeListeners = new HashMap<>();
 
-    public DynamicKafkaConsumer(MappingsRepository mappingsRepository,
-                                DatabaseRepository databasesRepository,
-                                EntityManagerFactory entityManagerFactory,
+    public DynamicKafkaConsumer(MappingRepository mappingsRepository,
+                                TablesRepository tableRepository,
+                                DatabaseRepository databaseRepository,
                                 ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
         this.mappingsRepository = mappingsRepository;
-        this.databasesRepository = databasesRepository;
-        this.entityManagerFactory = entityManagerFactory;
+        this.tableRepository = tableRepository;
+        this.databaseRepository = databaseRepository;
         this.containerFactory = containerFactory;
         this.objectMapper = new ObjectMapper();
     }
@@ -44,6 +46,7 @@ public class DynamicKafkaConsumer {
         for (String topic : topics) {
             if (!activeListeners.containsKey(topic)) {
                 var container = containerFactory.createContainer(topic);
+                container.getContainerProperties().setGroupId("dynamic-group");
 
                 container.setupMessageListener((MessageListener<String, String>) record -> {
                     processMessage(topic, record);
@@ -63,14 +66,20 @@ public class DynamicKafkaConsumer {
             JsonNode rootNode = objectMapper.readTree(record.value());
             JsonNode payload = rootNode.get("payload");
 
-            String operation = payload.get("op").asText(); // İşlem türü (c, u, d)
+            if (payload == null) {
+                System.err.println("Payload is null. Skipping message...");
+                return;
+            }
+
+            String operation = payload.get("op").asText(); // İşlem türü (INSERT, UPDATE, DELETE)
             JsonNode after = payload.get("after");
             JsonNode before = payload.get("before");
 
             List<Mapping> mappings = mappingsRepository.findByTopicName(topic);
 
             for (Mapping mapping : mappings) {
-                Database database = getDatabaseForSinkTable(mapping.getSinkTable());
+                Tables table = mapping.getTargetColumn().getTable();
+                Database database = table.getDatabase();
 
                 if (database != null) {
                     switch (operation) {
@@ -93,13 +102,6 @@ public class DynamicKafkaConsumer {
         }
     }
 
-    private Database getDatabaseForSinkTable(String sinkTable) {
-        return databasesRepository.findAll().stream()
-                .filter(db -> db.getConnectionUrl().contains(sinkTable))
-                .findFirst()
-                .orElse(null);
-    }
-
     private void handleInsert(Database database, Mapping mapping, JsonNode after) {
         String value = (String) extractValue(after, mapping.getSourceColumn(), String.class);
         performUpdate(database, mapping, value, null, "INSERT");
@@ -117,13 +119,13 @@ public class DynamicKafkaConsumer {
     }
 
     private void performUpdate(Database database, Mapping mapping, String value, Long id, String operationType) {
-        EntityManager entityManager = createEntityManagerForDatabase(database);
+        EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
 
         try {
             entityManager.getTransaction().begin();
 
-            String sql = "UPDATE " + mapping.getSinkTable() +
-                    " SET " + mapping.getSinkColumn() + " = :value " +
+            String sql = "UPDATE " + mapping.getTargetColumn().getTable().getName() +
+                    " SET " + mapping.getTargetColumn().getName() + " = :value " +
                     "WHERE id = :id";
 
             Query query = entityManager.createNativeQuery(sql);
@@ -145,12 +147,12 @@ public class DynamicKafkaConsumer {
     }
 
     private void performDelete(Database database, Mapping mapping, Long id) {
-        EntityManager entityManager = createEntityManagerForDatabase(database);
+        EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
 
         try {
             entityManager.getTransaction().begin();
 
-            String sql = "DELETE FROM " + mapping.getSinkTable() + " WHERE id = :id";
+            String sql = "DELETE FROM " + mapping.getTargetColumn().getTable().getName() + " WHERE id = :id";
 
             Query query = entityManager.createNativeQuery(sql);
             query.setParameter("id", id);
@@ -180,16 +182,12 @@ public class DynamicKafkaConsumer {
                 } else if (targetType == Double.class) {
                     return Double.parseDouble(value);
                 } else {
-                    return value; // Varsayılan olarak String
+                    return value;
                 }
             } catch (Exception e) {
                 throw new IllegalArgumentException("Cannot convert value: " + value + " to type: " + targetType.getName(), e);
             }
         }
         return null;
-    }
-
-    private EntityManager createEntityManagerForDatabase(Database database) {
-        return entityManagerFactory.createEntityManager();
     }
 }

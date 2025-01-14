@@ -1,6 +1,6 @@
-package com.demo.kafka.repository;
+package com.demo.kafka.feature.database;
 
-import com.demo.kafka.entity.Database;
+import com.demo.kafka.feature.database.Database;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DatabaseRepository extends JpaRepository<Database,Long> {

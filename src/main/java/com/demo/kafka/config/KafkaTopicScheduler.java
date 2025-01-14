@@ -1,7 +1,7 @@
 package com.demo.kafka.config;
 
-import com.demo.kafka.entity.Topic;
-import com.demo.kafka.repository.TopicRepository;
+import com.demo.kafka.feature.topic.Topic;
+import com.demo.kafka.feature.topic.TopicRepository;
 import com.demo.kafka.service.DynamicKafkaConsumer;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

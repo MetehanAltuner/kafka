@@ -1,6 +1,8 @@
-package com.demo.kafka.entity;
+package com.demo.kafka.feature.topic;
 
+import com.demo.kafka.feature.mapping.Mapping;
 import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "topics")
@@ -10,11 +12,14 @@ public class Topic {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column
     private String description;
+
+    @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL)
+    private List<Mapping> mappings;
 
     // Getters and Setters
     public Long getId() {
@@ -40,4 +45,13 @@ public class Topic {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    public List<Mapping> getMappings() {
+        return mappings;
+    }
+
+    public void setMappings(List<Mapping> mappings) {
+        this.mappings = mappings;
+    }
 }
+

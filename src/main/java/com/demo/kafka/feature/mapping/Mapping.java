@@ -1,5 +1,7 @@
-package com.demo.kafka.entity;
+package com.demo.kafka.feature.mapping;
 
+import com.demo.kafka.feature.topic.Topic;
+import com.demo.kafka.feature.columns.Columns;
 import jakarta.persistence.*;
 
 @Entity
@@ -10,18 +12,16 @@ public class Mapping {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "topic_id", nullable = false)
     private Topic topic;
 
-    @Column(name = "source_column", nullable = false)
+    @Column(nullable = false)
     private String sourceColumn;
 
-    @Column(name = "sink_table", nullable = false)
-    private String sinkTable;
-
-    @Column(name = "sink_column", nullable = false)
-    private String sinkColumn;
+    @ManyToOne
+    @JoinColumn(name = "target_column_id", nullable = false)
+    private Columns targetColumn;
 
     // Getters and Setters
     public Long getId() {
@@ -48,19 +48,11 @@ public class Mapping {
         this.sourceColumn = sourceColumn;
     }
 
-    public String getSinkTable() {
-        return sinkTable;
+    public Columns getTargetColumn() {
+        return targetColumn;
     }
 
-    public void setSinkTable(String sinkTable) {
-        this.sinkTable = sinkTable;
-    }
-
-    public String getSinkColumn() {
-        return sinkColumn;
-    }
-
-    public void setSinkColumn(String sinkColumn) {
-        this.sinkColumn = sinkColumn;
+    public void setTargetColumn(Columns targetColumn) {
+        this.targetColumn = targetColumn;
     }
 }

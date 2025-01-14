@@ -1,6 +1,6 @@
-package com.demo.kafka.repository;
+package com.demo.kafka.feature.topic;
 
-import com.demo.kafka.entity.Topic;
+import com.demo.kafka.feature.topic.Topic;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TopicRepository extends JpaRepository<Topic,Long> {

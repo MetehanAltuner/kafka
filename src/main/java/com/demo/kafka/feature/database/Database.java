@@ -1,6 +1,8 @@
-package com.demo.kafka.entity;
+package com.demo.kafka.feature.database;
 
+import com.demo.kafka.feature.tables.Tables;
 import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "databases")
@@ -10,10 +12,10 @@ public class Database {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
-    @Column(name = "connection_url", nullable = false)
+    @Column(nullable = false)
     private String connectionUrl;
 
     @Column(nullable = false)
@@ -21,6 +23,9 @@ public class Database {
 
     @Column(nullable = false)
     private String password;
+
+    @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
+    private List<Tables> tables;
 
     // Getters and Setters
     public Long getId() {
@@ -61,5 +66,13 @@ public class Database {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public List<Tables> getTables() {
+        return tables;
+    }
+
+    public void setTables(List<Tables> tables) {
+        this.tables = tables;
     }
 }

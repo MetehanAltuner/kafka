@@ -1,5 +1,4 @@
 package com.demo.kafka.service;
-
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,4 +15,3 @@ public class KafkaProducer {
         kafkaTemplate.send(topic, message);
     }
 }
-
