@@ -1,5 +1,6 @@
-package com.demo.kafka.feature.columns;
+package com.demo.kafka.feature.columns.dto;
 
+import com.demo.kafka.feature.columns.Columns;
 import com.demo.kafka.feature.tables.Tables;
 
 public class ColumnsDto {

@@ -1,7 +1,9 @@
 package com.demo.kafka.feature.topic;
 
 import com.demo.kafka.feature.mapping.Mapping;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+
 import java.util.List;
 
 @Entity
@@ -19,6 +21,7 @@ public class Topic {
     private String description;
 
     @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Mapping> mappings;
 
     // Getters and Setters

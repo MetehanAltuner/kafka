@@ -2,10 +2,7 @@ package com.demo.kafka.controller;
 
 import com.demo.kafka.service.KafkaConsumer;
 import com.demo.kafka.service.KafkaProducer;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/kafka")
@@ -20,8 +17,8 @@ public class KafkaController {
         this.kafkaConsumer = kafkaConsumer;
     }
 
-    @PostMapping("/send/{topic}/{message}")
-    public String sendMessage(@PathVariable String topic, @PathVariable String message) {
+    @PostMapping("/send/{topic}")
+    public String sendMessage(@PathVariable String topic, @RequestBody String message) {
         kafkaProducer.sendMessage(topic, message);
         return "Mesaj gönderilen Kafka topic: " + topic;
     }

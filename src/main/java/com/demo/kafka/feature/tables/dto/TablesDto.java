@@ -1,12 +1,12 @@
-package com.demo.kafka.feature.tables;
+package com.demo.kafka.feature.tables.dto;
 
-import com.demo.kafka.feature.database.Database;
+import com.demo.kafka.feature.tables.Tables;
 
 public class TablesDto {
 
     private Long id;
     private String name;
-    private Database database;
+    private String databaseName;
 
     // Getters and Setters
     public Long getId() {
@@ -25,27 +25,19 @@ public class TablesDto {
         this.name = name;
     }
 
-    public Database getDatabase() {
-        return database;
+    public String getDatabaseName() {
+        return databaseName;
     }
 
-    public void setDatabase(Database database) {
-        this.database = database;
+    public void setDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
     }
 
     public static TablesDto fromEntity(Tables table) {
         TablesDto dto = new TablesDto();
         dto.setId(table.getId());
         dto.setName(table.getName());
-        dto.setDatabase(table.getDatabase());
+        dto.setDatabaseName(table.getDatabase().getName());
         return dto;
-    }
-
-    public Tables toEntity() {
-        Tables table = new Tables();
-        table.setId(this.id);
-        table.setName(this.name);
-        table.setDatabase(this.database);
-        return table;
     }
 }

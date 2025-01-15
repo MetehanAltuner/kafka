@@ -1,6 +1,8 @@
 package com.demo.kafka.feature.mapping;
 
 import com.demo.kafka.common.ApiResponse;
+import com.demo.kafka.feature.mapping.dto.MappingRequestDto;
+import com.demo.kafka.feature.mapping.dto.MappingResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,33 +18,34 @@ public class MappingController {
         this.mappingService = mappingService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<MappingDto>>> getAllMappings() {
-        List<MappingDto> mappings = mappingService.getAllMappings();
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", mappings));
+    @PostMapping
+    public ResponseEntity<ApiResponse<MappingResponseDto>> createMapping(@RequestBody MappingRequestDto requestDto) {
+        MappingResponseDto responseDto = mappingService.createMapping(requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Mapping created successfully", responseDto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MappingDto>> getMappingById(@PathVariable Long id) {
-        MappingDto mapping = mappingService.getMappingById(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", mapping));
+    public ResponseEntity<ApiResponse<MappingResponseDto>> getMappingById(@PathVariable Long id) {
+        MappingResponseDto responseDto = mappingService.getMappingById(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDto));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<MappingDto>> createMapping(@RequestBody MappingDto mappingDto) {
-        MappingDto createdMapping = mappingService.createMapping(mappingDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Created successfully", createdMapping));
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<MappingResponseDto>>> getAllMappings() {
+        List<MappingResponseDto> responseDtos = mappingService.getAllMappings();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDtos));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<MappingDto>> updateMapping(@PathVariable Long id, @RequestBody MappingDto mappingDto) {
-        MappingDto updatedMapping = mappingService.updateMapping(id, mappingDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Updated successfully", updatedMapping));
+    public ResponseEntity<ApiResponse<MappingResponseDto>> updateMapping(@PathVariable Long id, @RequestBody MappingRequestDto requestDto) {
+        MappingResponseDto responseDto = mappingService.updateMapping(id, requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Mapping updated successfully", responseDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteMapping(@PathVariable Long id) {
         mappingService.deleteMapping(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Mapping deleted successfully", null));
     }
 }
+

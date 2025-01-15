@@ -1,6 +1,8 @@
-package com.demo.kafka.feature.topic;
+package com.demo.kafka.feature.topic.dto;
 
-public class TopicDto {
+import com.demo.kafka.feature.topic.Topic;
+
+public class TopicResponseDto {
 
     private Long id;
     private String name;
@@ -31,19 +33,11 @@ public class TopicDto {
         this.description = description;
     }
 
-    public static TopicDto fromEntity(Topic topic) {
-        TopicDto dto = new TopicDto();
+    public static TopicResponseDto fromEntity(Topic topic) {
+        TopicResponseDto dto = new TopicResponseDto();
         dto.setId(topic.getId());
         dto.setName(topic.getName());
         dto.setDescription(topic.getDescription());
         return dto;
-    }
-
-    public Topic toEntity() {
-        Topic topic = new Topic();
-        topic.setId(this.id);
-        topic.setName(this.name);
-        topic.setDescription(this.description);
-        return topic;
     }
 }

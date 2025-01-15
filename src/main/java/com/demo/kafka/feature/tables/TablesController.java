@@ -1,6 +1,8 @@
 package com.demo.kafka.feature.tables;
 
 import com.demo.kafka.common.ApiResponse;
+import com.demo.kafka.feature.tables.dto.TablesRequestDto;
+import com.demo.kafka.feature.tables.dto.TablesResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,33 +18,33 @@ public class TablesController {
         this.tablesService = tablesService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<TablesDto>>> getAllTables() {
-        List<TablesDto> tables = tablesService.getAllTables();
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", tables));
+    @PostMapping
+    public ResponseEntity<ApiResponse<TablesResponseDto>> createTable(@RequestBody TablesRequestDto requestDto) {
+        TablesResponseDto responseDto = tablesService.createTable(requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Table created successfully", responseDto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TablesDto>> getTableById(@PathVariable Long id) {
-        TablesDto table = tablesService.getTableById(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", table));
+    public ResponseEntity<ApiResponse<TablesResponseDto>> getTableById(@PathVariable Long id) {
+        TablesResponseDto responseDto = tablesService.getTableById(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDto));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<TablesDto>> createTable(@RequestBody TablesDto tablesDto) {
-        TablesDto createdTable = tablesService.createTable(tablesDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Created successfully", createdTable));
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<TablesResponseDto>>> getAllTables() {
+        List<TablesResponseDto> responseDtos = tablesService.getAllTables();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDtos));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<TablesDto>> updateTable(@PathVariable Long id, @RequestBody TablesDto tablesDto) {
-        TablesDto updatedTable = tablesService.updateTable(id, tablesDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Updated successfully", updatedTable));
+    public ResponseEntity<ApiResponse<TablesResponseDto>> updateTable(@PathVariable Long id, @RequestBody TablesRequestDto requestDto) {
+        TablesResponseDto responseDto = tablesService.updateTable(id, requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Table updated successfully", responseDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteTable(@PathVariable Long id) {
         tablesService.deleteTable(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Table deleted successfully", null));
     }
 }

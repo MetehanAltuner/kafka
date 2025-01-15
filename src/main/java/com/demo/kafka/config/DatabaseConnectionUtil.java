@@ -18,11 +18,7 @@ public class DatabaseConnectionUtil {
             properties.put("hibernate.connection.url", database.getConnectionUrl());
             properties.put("hibernate.connection.username", database.getUsername());
             properties.put("hibernate.connection.password", database.getPassword());
-            properties.put("hibernate.connection.driver_class", "com.microsoft.sqlserver.jdbc.SQLServerDriver");
-            properties.put("hibernate.dialect", "org.hibernate.dialect.SQLServerDialect");
-            properties.put("hibernate.hbm2ddl.auto", "none");
-            properties.put("hibernate.show_sql", "true");
-            properties.put("hibernate.format_sql", "true");
+
 
 
             EntityManagerFactory emf = Persistence.createEntityManagerFactory("dynamic-persistence-unit", properties);

@@ -1,6 +1,10 @@
 package com.demo.kafka.feature.columns;
 
 import com.demo.kafka.common.exception.ResourceNotFoundException;
+import com.demo.kafka.feature.columns.dto.ColumnsRequestDto;
+import com.demo.kafka.feature.columns.dto.ColumnsResponseDto;
+import com.demo.kafka.feature.tables.Tables;
+import com.demo.kafka.feature.tables.TablesRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,36 +14,51 @@ import java.util.stream.Collectors;
 public class ColumnsService {
 
     private final ColumnsRepository columnsRepository;
+    private final TablesRepository tablesRepository;
 
-    public ColumnsService(ColumnsRepository columnsRepository) {
+    public ColumnsService(ColumnsRepository columnsRepository, TablesRepository tablesRepository) {
         this.columnsRepository = columnsRepository;
+        this.tablesRepository = tablesRepository;
     }
 
-    public List<ColumnsDto> getAllColumns() {
+    public ColumnsResponseDto createColumn(ColumnsRequestDto requestDto) {
+        Tables table = tablesRepository.findById(requestDto.getTableId())
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        Columns column = new Columns();
+        column.setName(requestDto.getName());
+        column.setPrimaryKey(requestDto.isPrimaryKey());
+        column.setTable(table);
+
+        Columns savedColumn = columnsRepository.save(column);
+        return ColumnsResponseDto.fromEntity(savedColumn);
+    }
+
+    public ColumnsResponseDto getColumnById(Long id) {
+        Columns column = columnsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
+        return ColumnsResponseDto.fromEntity(column);
+    }
+
+    public List<ColumnsResponseDto> getAllColumns() {
         return columnsRepository.findAll().stream()
-                .map(ColumnsDto::fromEntity)
+                .map(ColumnsResponseDto::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    public ColumnsDto getColumnById(Long id) {
+    public ColumnsResponseDto updateColumn(Long id, ColumnsRequestDto requestDto) {
         Columns column = columnsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
-        return ColumnsDto.fromEntity(column);
-    }
 
-    public ColumnsDto createColumn(ColumnsDto columnsDto) {
-        Columns column = columnsDto.toEntity();
-        column = columnsRepository.save(column);
-        return ColumnsDto.fromEntity(column);
-    }
+        Tables table = tablesRepository.findById(requestDto.getTableId())
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
 
-    public ColumnsDto updateColumn(Long id, ColumnsDto columnsDto) {
-        Columns column = columnsRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
-        column.setName(columnsDto.getName());
-        column.setTable(columnsDto.getTable());
-        column = columnsRepository.save(column);
-        return ColumnsDto.fromEntity(column);
+        column.setName(requestDto.getName());
+        column.setPrimaryKey(requestDto.isPrimaryKey());
+        column.setTable(table);
+
+        Columns updatedColumn = columnsRepository.save(column);
+        return ColumnsResponseDto.fromEntity(updatedColumn);
     }
 
     public void deleteColumn(Long id) {
@@ -48,4 +67,5 @@ public class ColumnsService {
         columnsRepository.delete(column);
     }
 }
+
 

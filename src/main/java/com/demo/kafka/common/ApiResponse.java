@@ -1,4 +1,5 @@
 package com.demo.kafka.common;
+
 public class ApiResponse<T> {
     private boolean success;
     private String message;

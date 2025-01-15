@@ -1,6 +1,7 @@
-package com.demo.kafka.feature.mapping;
+package com.demo.kafka.feature.mapping.dto;
 
 import com.demo.kafka.feature.columns.Columns;
+import com.demo.kafka.feature.mapping.Mapping;
 import com.demo.kafka.feature.topic.Topic;
 
 public class MappingDto {
@@ -9,6 +10,7 @@ public class MappingDto {
     private Topic topic;
     private String sourceColumn;
     private Columns targetColumn;
+    private boolean isPrimaryKey;
 
     // Getters and Setters
     public Long getId() {
@@ -42,6 +44,13 @@ public class MappingDto {
     public void setTargetColumn(Columns targetColumn) {
         this.targetColumn = targetColumn;
     }
+    public boolean isPrimaryKey() {
+        return isPrimaryKey;
+    }
+
+    public void setPrimaryKey(boolean primaryKey) {
+        isPrimaryKey = primaryKey;
+    }
 
     public static MappingDto fromEntity(Mapping mapping) {
         MappingDto dto = new MappingDto();
@@ -49,6 +58,7 @@ public class MappingDto {
         dto.setTopic(mapping.getTopic());
         dto.setSourceColumn(mapping.getSourceColumn());
         dto.setTargetColumn(mapping.getTargetColumn());
+        dto.setPrimaryKey(mapping.getTargetColumn().isPrimaryKey());
         return dto;
     }
 

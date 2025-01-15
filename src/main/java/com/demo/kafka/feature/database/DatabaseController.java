@@ -1,6 +1,8 @@
 package com.demo.kafka.feature.database;
 
 import com.demo.kafka.common.ApiResponse;
+import com.demo.kafka.feature.database.dto.DatabaseRequestDto;
+import com.demo.kafka.feature.database.dto.DatabaseResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,33 +18,34 @@ public class DatabaseController {
         this.databaseService = databaseService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<DatabaseDto>>> getAllDatabases() {
-        List<DatabaseDto> databases = databaseService.getAllDatabases();
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", databases));
+    @PostMapping
+    public ResponseEntity<ApiResponse<DatabaseResponseDto>> createDatabase(@RequestBody DatabaseRequestDto requestDto) {
+        DatabaseResponseDto responseDto = databaseService.createDatabase(requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Database created successfully", responseDto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<DatabaseDto>> getDatabaseById(@PathVariable Long id) {
-        DatabaseDto database = databaseService.getDatabaseById(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", database));
+    public ResponseEntity<ApiResponse<DatabaseResponseDto>> getDatabaseById(@PathVariable Long id) {
+        DatabaseResponseDto responseDto = databaseService.getDatabaseById(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDto));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<DatabaseDto>> createDatabase(@RequestBody DatabaseDto databaseDto) {
-        DatabaseDto createdDatabase = databaseService.createDatabase(databaseDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Created successfully", createdDatabase));
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<DatabaseResponseDto>>> getAllDatabases() {
+        List<DatabaseResponseDto> responseDtos = databaseService.getAllDatabases();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDtos));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<DatabaseDto>> updateDatabase(@PathVariable Long id, @RequestBody DatabaseDto databaseDto) {
-        DatabaseDto updatedDatabase = databaseService.updateDatabase(id, databaseDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Updated successfully", updatedDatabase));
+    public ResponseEntity<ApiResponse<DatabaseResponseDto>> updateDatabase(@PathVariable Long id, @RequestBody DatabaseRequestDto requestDto) {
+        DatabaseResponseDto responseDto = databaseService.updateDatabase(id, requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Database updated successfully", responseDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteDatabase(@PathVariable Long id) {
         databaseService.deleteDatabase(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Database deleted successfully", null));
     }
 }
+

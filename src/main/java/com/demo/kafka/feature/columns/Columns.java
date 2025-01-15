@@ -18,6 +18,9 @@ public class Columns {
     @JoinColumn(name = "table_id", nullable = false)
     private Tables table;
 
+    @Column(nullable = false)
+    private boolean isprimarykey;
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -41,6 +44,14 @@ public class Columns {
 
     public void setTable(Tables table) {
         this.table = table;
+    }
+
+    public boolean isPrimaryKey() {
+        return isprimarykey;
+    }
+
+    public void setPrimaryKey(boolean primaryKey) {
+        isprimarykey = primaryKey;
     }
 }
 

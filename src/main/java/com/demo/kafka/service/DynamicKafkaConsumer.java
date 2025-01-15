@@ -2,16 +2,18 @@ package com.demo.kafka.service;
 
 import com.demo.kafka.config.DatabaseConnectionUtil;
 import com.demo.kafka.feature.database.Database;
-import com.demo.kafka.feature.mapping.Mapping;
-import com.demo.kafka.feature.tables.Tables;
 import com.demo.kafka.feature.database.DatabaseRepository;
+import com.demo.kafka.feature.mapping.Mapping;
 import com.demo.kafka.feature.mapping.MappingRepository;
+import com.demo.kafka.feature.tables.Tables;
 import com.demo.kafka.feature.tables.TablesRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class DynamicKafkaConsumer {
@@ -30,6 +33,8 @@ public class DynamicKafkaConsumer {
     private final ConcurrentKafkaListenerContainerFactory<String, String> containerFactory;
     private final ObjectMapper objectMapper;
     private final Map<String, MessageListenerContainer> activeListeners = new HashMap<>();
+
+    private static final Logger logger = LoggerFactory.getLogger(DynamicKafkaConsumer.class);
 
     public DynamicKafkaConsumer(MappingRepository mappingsRepository,
                                 TablesRepository tableRepository,
@@ -63,131 +68,232 @@ public class DynamicKafkaConsumer {
         System.out.println("Processing Topic: " + topic + " | Message: " + record.value());
 
         try {
+            logger.info("Processing message from topic: {}, key: {}, value: {}", topic, record.key(), record.value());
             JsonNode rootNode = objectMapper.readTree(record.value());
             JsonNode payload = rootNode.get("payload");
 
             if (payload == null) {
-                System.err.println("Payload is null. Skipping message...");
+                logger.error("Payload is null. Skipping message...");
                 return;
             }
 
-            String operation = payload.get("op").asText(); // İşlem türü (INSERT, UPDATE, DELETE)
+            String operation = payload.get("op").asText();
             JsonNode after = payload.get("after");
             JsonNode before = payload.get("before");
 
             List<Mapping> mappings = mappingsRepository.findByTopicName(topic);
 
-            for (Mapping mapping : mappings) {
-                Tables table = mapping.getTargetColumn().getTable();
-                Database database = table.getDatabase();
+            Map<Database, Map<Tables, List<Mapping>>> groupedMappings = mappings.stream()
+                    .collect(Collectors.groupingBy(
+                            mapping -> mapping.getTargetColumn().getTable().getDatabase(),
+                            Collectors.groupingBy(mapping -> mapping.getTargetColumn().getTable())
+                    ));
 
-                if (database != null) {
+            for (Map.Entry<Database, Map<Tables, List<Mapping>>> databaseEntry : groupedMappings.entrySet()) {
+                Database database = databaseEntry.getKey();
+                Map<Tables, List<Mapping>> tableMappings = databaseEntry.getValue();
+
+                for (Map.Entry<Tables, List<Mapping>> tableEntry : tableMappings.entrySet()) {
+                    Tables table = tableEntry.getKey();
+                    List<Mapping> columnMappings = tableEntry.getValue();
+
                     switch (operation) {
                         case "c":
-                            if (after != null) handleInsert(database, mapping, after);
+                            if (after != null) handleInsert(database, table, columnMappings, after);
                             break;
                         case "u":
-                            if (after != null) handleUpdate(database, mapping, before, after);
+                            if (after != null) handleUpdate(database, table, columnMappings, before, after);
                             break;
                         case "d":
-                            if (before != null) handleDelete(database, mapping, before);
+                            if (before != null) handleDelete(database, table, columnMappings, before);
                             break;
                         default:
-                            System.out.println("Unknown operation: " + operation);
+                            logger.warn("Unknown operation: {}", operation);
                     }
                 }
             }
+
+            logger.info("Message processed successfully: {}", record.value());
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error processing message from topic: {}, value: {}", topic, record.value(), e);
         }
     }
 
-    private void handleInsert(Database database, Mapping mapping, JsonNode after) {
-        String value = (String) extractValue(after, mapping.getSourceColumn(), String.class);
-        performUpdate(database, mapping, value, null, "INSERT");
+
+    private void handleInsert(Database database, Tables table, List<Mapping> columnMappings, JsonNode after) {
+        Map<String, Object> values = new HashMap<>();
+        for (Mapping mapping : columnMappings) {
+            String sourceColumn = mapping.getSourceColumn();
+            Object value = extractValue(after, sourceColumn, String.class);
+            values.put(mapping.getTargetColumn().getName(), value);
+        }
+        if (recordExists(database, table, columnMappings, values)) {
+            logger.warn("Record with primary key already exists in table {}", table.getName());
+            return;
+        }
+        performInsert(database, table, values);
     }
 
-    private void handleUpdate(Database database, Mapping mapping, JsonNode before, JsonNode after) {
-        String newValue = (String) extractValue(after, mapping.getSourceColumn(), String.class);
+
+    private void handleUpdate(Database database, Tables table, List<Mapping> columnMappings, JsonNode before, JsonNode after) {
+        Map<String, Object> values = new HashMap<>();
+        for (Mapping mapping : columnMappings) {
+            String sourceColumn = mapping.getSourceColumn();
+            Object value = extractValue(after, sourceColumn, String.class);
+            values.put(mapping.getTargetColumn().getName(), value);
+        }
         Long id = (Long) extractValue(after, "id", Long.class);
-        performUpdate(database, mapping, newValue, id, "UPDATE");
+        performUpdate(database, table, values, id);
     }
 
-    private void handleDelete(Database database, Mapping mapping, JsonNode before) {
+
+    private void handleDelete(Database database, Tables table, List<Mapping> columnMappings, JsonNode before) {
         Long id = (Long) extractValue(before, "id", Long.class);
-        performDelete(database, mapping, id);
+        performDelete(database, table, id);
     }
 
-    private void performUpdate(Database database, Mapping mapping, String value, Long id, String operationType) {
+    private void performInsert(Database database, Tables table, Map<String, Object> values) {
         EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
 
         try {
             entityManager.getTransaction().begin();
 
-            String sql = "UPDATE " + mapping.getTargetColumn().getTable().getName() +
-                    " SET " + mapping.getTargetColumn().getName() + " = :value " +
-                    "WHERE id = :id";
+            String columns = String.join(", ", values.keySet());
+            String placeholders = values.keySet().stream().map(k -> ":" + k).collect(Collectors.joining(", "));
 
+            String sql = "INSERT INTO " + table.getName() + " (" + columns + ") VALUES (" + placeholders + ")";
             Query query = entityManager.createNativeQuery(sql);
-            query.setParameter("value", value);
-            query.setParameter("id", id);
 
-            int updated = query.executeUpdate();
-            System.out.println(operationType + " Operation - Updated Rows: " + updated);
+            for (Map.Entry<String, Object> entry : values.entrySet()) {
+                query.setParameter(entry.getKey(), entry.getValue());
+            }
+
+            int inserted = query.executeUpdate();
+            logger.info("INSERT Operation - Inserted Rows: {}", inserted);
 
             entityManager.getTransaction().commit();
         } catch (Exception e) {
             if (entityManager.getTransaction().isActive()) {
                 entityManager.getTransaction().rollback();
             }
-            e.printStackTrace();
+            logger.error("Error occurred during INSERT operation on table: {}", table.getName(), e);
         } finally {
             entityManager.close();
         }
     }
 
-    private void performDelete(Database database, Mapping mapping, Long id) {
+
+
+    private void performUpdate(Database database, Tables table, Map<String, Object> values, Long id) {
         EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
 
         try {
             entityManager.getTransaction().begin();
 
-            String sql = "DELETE FROM " + mapping.getTargetColumn().getTable().getName() + " WHERE id = :id";
+            String setClause = values.keySet().stream()
+                    .map(column -> column + " = :" + column)
+                    .collect(Collectors.joining(", "));
 
+            String sql = "UPDATE " + table.getName() + " SET " + setClause + " WHERE id = :id";
             Query query = entityManager.createNativeQuery(sql);
+
+            for (Map.Entry<String, Object> entry : values.entrySet()) {
+                query.setParameter(entry.getKey(), entry.getValue());
+            }
             query.setParameter("id", id);
 
-            int deleted = query.executeUpdate();
-            System.out.println("DELETE Operation - Deleted Rows: " + deleted);
+            int updated = query.executeUpdate();
+            logger.info("UPDATE Operation - Updated Rows: {}", updated);
 
             entityManager.getTransaction().commit();
         } catch (Exception e) {
             if (entityManager.getTransaction().isActive()) {
                 entityManager.getTransaction().rollback();
             }
-            e.printStackTrace();
+            logger.error("Error occurred during UPDATE operation on table: {}", table.getName(), e);
+        } finally {
+            entityManager.close();
+        }
+    }
+
+
+    private void performDelete(Database database, Tables table, Long id) {
+        EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
+
+        try {
+            entityManager.getTransaction().begin();
+
+            String sql = "DELETE FROM " + table.getName() + " WHERE id = :id";
+            Query query = entityManager.createNativeQuery(sql);
+            query.setParameter("id", id);
+
+            int deleted = query.executeUpdate();
+            logger.info("DELETE Operation - Deleted Rows: {}", deleted);
+
+            entityManager.getTransaction().commit();
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            logger.error("Error occurred during DELETE operation on table: {}", table.getName(), e);
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    private boolean recordExists(Database database, Tables table, List<Mapping> columnMappings, Map<String, Object> values) {
+        EntityManager entityManager = DatabaseConnectionUtil.createEntityManager(database);
+        try {
+            // Birincil anahtar sütununu buluyoruz.
+            String primaryKeyColumn = columnMappings.stream()
+                    .filter(mapping -> mapping.getTargetColumn().isPrimaryKey())
+                    .map(mapping -> mapping.getTargetColumn().getName())
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Primary key column not found for table: " + table.getName()));
+
+            if (!values.containsKey(primaryKeyColumn)) {
+                throw new IllegalArgumentException("Primary key value missing for column: " + primaryKeyColumn);
+            }
+
+            String sql = "SELECT COUNT(*) FROM " + table.getName() + " WHERE " + primaryKeyColumn + " = :primaryKeyValue";
+            Query query = entityManager.createNativeQuery(sql);
+            query.setParameter("primaryKeyValue", values.get(primaryKeyColumn));
+
+            Long count = ((Number) query.getSingleResult()).longValue();
+            return count > 0;
         } finally {
             entityManager.close();
         }
     }
 
     private Object extractValue(JsonNode node, String columnName, Class<?> targetType) {
-        if (node.has(columnName)) {
-            String value = node.get(columnName).asText();
-            try {
-                if (targetType == Integer.class) {
-                    return Integer.parseInt(value);
-                } else if (targetType == Long.class) {
-                    return Long.parseLong(value);
-                } else if (targetType == Double.class) {
-                    return Double.parseDouble(value);
-                } else {
-                    return value;
-                }
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Cannot convert value: " + value + " to type: " + targetType.getName(), e);
-            }
+    if (node.has(columnName)) {
+        JsonNode valueNode = node.get(columnName);
+        if (valueNode.isNull()) {
+            return null; // Değer null ise geri dön
         }
-        return null;
+
+        try {
+            if (valueNode.isInt()) {
+                return valueNode.intValue();
+            } else if (valueNode.isLong()) {
+                return valueNode.longValue();
+            } else if (valueNode.isDouble()) {
+                return valueNode.doubleValue();
+            } else if (valueNode.isBoolean()) {
+                return valueNode.booleanValue();
+            } else if (valueNode.isTextual()) {
+                return valueNode.textValue();
+            } else if (valueNode.isNull()) {
+                return null;
+            } else {
+                throw new IllegalArgumentException("Unsupported JSON value type for column: " + columnName);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert value: " + valueNode + " to type: " + targetType.getName(), e);
+        }
     }
+    return null; // Eğer alan yoksa null döndür
+}
+
 }

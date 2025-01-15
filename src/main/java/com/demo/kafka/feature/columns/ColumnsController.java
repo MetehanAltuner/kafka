@@ -1,6 +1,8 @@
 package com.demo.kafka.feature.columns;
 
 import com.demo.kafka.common.ApiResponse;
+import com.demo.kafka.feature.columns.dto.ColumnsRequestDto;
+import com.demo.kafka.feature.columns.dto.ColumnsResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,33 +18,34 @@ public class ColumnsController {
         this.columnsService = columnsService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<ColumnsDto>>> getAllColumns() {
-        List<ColumnsDto> columns = columnsService.getAllColumns();
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", columns));
+    @PostMapping
+    public ResponseEntity<ApiResponse<ColumnsResponseDto>> createColumn(@RequestBody ColumnsRequestDto requestDto) {
+        ColumnsResponseDto responseDto = columnsService.createColumn(requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Column created successfully", responseDto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ColumnsDto>> getColumnById(@PathVariable Long id) {
-        ColumnsDto column = columnsService.getColumnById(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", column));
+    public ResponseEntity<ApiResponse<ColumnsResponseDto>> getColumnById(@PathVariable Long id) {
+        ColumnsResponseDto responseDto = columnsService.getColumnById(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDto));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<ColumnsDto>> createColumn(@RequestBody ColumnsDto columnsDto) {
-        ColumnsDto createdColumn = columnsService.createColumn(columnsDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Created successfully", createdColumn));
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ColumnsResponseDto>>> getAllColumns() {
+        List<ColumnsResponseDto> responseDtos = columnsService.getAllColumns();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", responseDtos));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ColumnsDto>> updateColumn(@PathVariable Long id, @RequestBody ColumnsDto columnsDto) {
-        ColumnsDto updatedColumn = columnsService.updateColumn(id, columnsDto);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Updated successfully", updatedColumn));
+    public ResponseEntity<ApiResponse<ColumnsResponseDto>> updateColumn(@PathVariable Long id, @RequestBody ColumnsRequestDto requestDto) {
+        ColumnsResponseDto responseDto = columnsService.updateColumn(id, requestDto);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Column updated successfully", responseDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteColumn(@PathVariable Long id) {
         columnsService.deleteColumn(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Column deleted successfully", null));
     }
 }
+

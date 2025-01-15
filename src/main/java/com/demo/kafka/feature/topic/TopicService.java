@@ -1,5 +1,7 @@
 package com.demo.kafka.feature.topic;
 
+import com.demo.kafka.feature.topic.dto.TopicRequestDto;
+import com.demo.kafka.feature.topic.dto.TopicResponseDto;
 import org.springframework.stereotype.Service;
 import com.demo.kafka.common.exception.ResourceNotFoundException;
 
@@ -15,31 +17,36 @@ public class TopicService {
         this.topicRepository = topicRepository;
     }
 
-    public List<TopicDto> getAllTopics() {
+    public TopicResponseDto createTopic(TopicRequestDto requestDto) {
+        Topic topic = new Topic();
+        topic.setName(requestDto.getName());
+        topic.setDescription(requestDto.getDescription());
+
+        Topic savedTopic = topicRepository.save(topic);
+        return TopicResponseDto.fromEntity(savedTopic);
+    }
+
+    public TopicResponseDto getTopicById(Long id) {
+        Topic topic = topicRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+        return TopicResponseDto.fromEntity(topic);
+    }
+
+    public List<TopicResponseDto> getAllTopics() {
         return topicRepository.findAll().stream()
-                .map(TopicDto::fromEntity)
+                .map(TopicResponseDto::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    public TopicDto getTopicById(Long id) {
+    public TopicResponseDto updateTopic(Long id, TopicRequestDto requestDto) {
         Topic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
-        return TopicDto.fromEntity(topic);
-    }
 
-    public TopicDto createTopic(TopicDto topicDto) {
-        Topic topic = topicDto.toEntity();
-        topic = topicRepository.save(topic);
-        return TopicDto.fromEntity(topic);
-    }
+        topic.setName(requestDto.getName());
+        topic.setDescription(requestDto.getDescription());
 
-    public TopicDto updateTopic(Long id, TopicDto topicDto) {
-        Topic topic = topicRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
-        topic.setName(topicDto.getName());
-        topic.setDescription(topicDto.getDescription());
-        topic = topicRepository.save(topic);
-        return TopicDto.fromEntity(topic);
+        Topic updatedTopic = topicRepository.save(topic);
+        return TopicResponseDto.fromEntity(updatedTopic);
     }
 
     public void deleteTopic(Long id) {
@@ -48,4 +55,5 @@ public class TopicService {
         topicRepository.delete(topic);
     }
 }
+
 

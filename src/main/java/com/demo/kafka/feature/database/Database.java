@@ -1,6 +1,7 @@
 package com.demo.kafka.feature.database;
 
 import com.demo.kafka.feature.tables.Tables;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class Database {
     private String password;
 
     @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Tables> tables;
 
     // Getters and Setters

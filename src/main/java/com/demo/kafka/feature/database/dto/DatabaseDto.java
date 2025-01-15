@@ -1,4 +1,6 @@
-package com.demo.kafka.feature.database;
+package com.demo.kafka.feature.database.dto;
+
+import com.demo.kafka.feature.database.Database;
 
 public class DatabaseDto {
 
